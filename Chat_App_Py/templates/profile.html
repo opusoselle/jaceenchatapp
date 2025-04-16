@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <!-- Cropper.js dependencies -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+</head>
+<body>
+    <div class="container profile-container">
+        <h1>Edit Your Profile</h1>
+       
+        {% if message %}
+            <p class="feedback success">{{ message }}</p>
+        {% endif %}
+       
+        <form action="/profile" method="POST" enctype="multipart/form-data" class="profile-form">
+            <div class="profile-pic-section">
+                <div class="current-pic">
+                    <img src="/static/uploads/profile_pics/{{ user.profile_pic }}" alt="Profile Picture" id="profile-preview">
+                </div>
+                
+                <div class="pic-upload">
+                    <label for="profile_pic" class="custom-file-upload">
+                        <i class="fas fa-camera"></i> Choose New Picture
+                    </label>
+                    <input type="file" name="profile_pic" id="profile_pic" accept="image/*">
+                </div>
+                
+                <!-- Image cropper modal -->
+                <div id="crop-modal" class="modal">
+                    <div class="modal-content">
+                        <span class="close-modal">&times;</span>
+                        <h3>Adjust Your Profile Picture</h3>
+                        <div class="cropper-container">
+                            <img id="crop-image" src="">
+                        </div>
+                        <div class="crop-controls">
+                            <button id="rotate-left" type="button"><i class="fas fa-undo"></i></button>
+                            <button id="rotate-right" type="button"><i class="fas fa-redo"></i></button>
+                            <button id="zoom-in" type="button"><i class="fas fa-search-plus"></i></button>
+                            <button id="zoom-out" type="button"><i class="fas fa-search-minus"></i></button>
+                            <button id="save-crop" type="button" class="btn-primary">Save</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hidden input for cropped data -->
+                <input type="hidden" name="cropped_data" id="cropped_data">
+            </div>
+           
+            <div class="form-group">
+                <label for="status_message">Status Message</label>
+                <input type="text" name="status_message" id="status_message" value="{{ user.status_message }}" maxlength="100" placeholder="What's on your mind?">
+            </div>
+           
+            <div class="form-group">
+                <label for="location">Location</label>
+                <input type="text" name="location" id="location" value="{{ user.location }}" placeholder="Your location">
+            </div>
+           
+            <div class="form-group">
+                <label for="interests">Interests</label>
+                <input type="text" name="interests" id="interests" value="{{ user.interests }}" placeholder="Your interests (comma separated)">
+            </div>
+           
+            <div class="form-group">
+                <label for="bio">Bio</label>
+                <textarea name="bio" id="bio" rows="4" placeholder="Tell us about yourself">{{ user.bio }}</textarea>
+            </div>
+           
+            <div class="button-group">
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Profile</button>
+                <a href="/" class="btn-secondary"><i class="fas fa-arrow-left"></i> Back to Home</a>
+            </div>
+        </form>
+    </div>
+   
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Profile picture cropping
+            const profileInput = document.getElementById('profile_pic');
+            const cropModal = document.getElementById('crop-modal');
+            const cropImage = document.getElementById('crop-image');
+            const closeModal = document.querySelector('.close-modal');
+            const saveCrop = document.getElementById('save-crop');
+            const croppedDataInput = document.getElementById('cropped_data');
+            const profilePreview = document.getElementById('profile-preview');
+            
+            let cropper;
+            
+            // Open modal when file is selected
+            profileInput.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        cropImage.src = e.target.result;
+                        cropModal.style.display = 'block';
+                        
+                        // Initialize cropper
+                        if (cropper) {
+                            cropper.destroy();
+                        }
+                        
+                        cropper = new Cropper(cropImage, {
+                            aspectRatio: 1,
+                            viewMode: 1,
+                            dragMode: 'move',
+                            autoCropArea: 1,
+                            restore: false,
+                            guides: true,
+                            center: true,
+                            highlight: false,
+                            cropBoxMovable: true,
+                            cropBoxResizable: true,
+                            toggleDragModeOnDblclick: false
+                        });
+                    };
+                    
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+            
+            // Close modal
+            closeModal.addEventListener('click', function() {
+                cropModal.style.display = 'none';
+            });
+            
+            // Save cropped image
+            saveCrop.addEventListener('click', function() {
+                const canvas = cropper.getCroppedCanvas({
+                    width: 300,
+                    height: 300
+                });
+                
+                // Preview
+                profilePreview.src = canvas.toDataURL();
+                
+                // Store data to send to server
+                croppedDataInput.value = canvas.toDataURL();
+                
+                // Close modal
+                cropModal.style.display = 'none';
+            });
+            
+            // Rotate and zoom controls
+            document.getElementById('rotate-left').addEventListener('click', function() {
+                cropper.rotate(-90);
+            });
+            
+            document.getElementById('rotate-right').addEventListener('click', function() {
+                cropper.rotate(90);
+            });
+            
+            document.getElementById('zoom-in').addEventListener('click', function() {
+                cropper.zoom(0.1);
+            });
+            
+            document.getElementById('zoom-out').addEventListener('click', function() {
+                cropper.zoom(-0.1);
+            });
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', function(e) {
+                if (e.target === cropModal) {
+                    cropModal.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

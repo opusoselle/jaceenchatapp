@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <div class="container events-container">
+        <div class="page-header">
+            <h1>Events</h1>
+            <div class="nav-links">
+                <a href="/" class="btn-action"><i class="fas fa-home"></i> Home</a>
+                <a href="/users" class="btn-action"><i class="fas fa-users"></i> Users</a>
+                <a href="/messages" class="btn-action"><i class="fas fa-envelope"></i> Messages</a>
+                <a href="/newsfeed" class="btn-action"><i class="fas fa-newspaper"></i> Community Feed</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <p class="feedback">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="events-create-btn">
+            <a href="/events/create" class="btn-primary"><i class="fas fa-plus"></i> Create New Event</a>
+        </div>
+
+        <div class="events-tabs">
+            <button class="tab-button active" data-tab="upcoming">Upcoming Events</button>
+            <button class="tab-button" data-tab="attending">Events I'm Attending</button>
+            <button class="tab-button" data-tab="myevents">My Events</button>
+        </div>
+
+        <div class="tab-content">
+            <div class="tab-pane active" id="upcoming-tab">
+                <h2>Upcoming Events</h2>
+                {% if upcoming_events %}
+                    <div class="events-list">
+                        {% for event in upcoming_events %}
+                            <div class="event-card">
+                                <div class="event-date-badge">
+                                    <span class="event-month">{{ event.event_date.strftime('%b') }}</span>
+                                    <span class="event-day">{{ event.event_date.strftime('%d') }}</span>
+                                </div>
+                                <div class="event-details">
+                                    <h3 class="event-title">{{ event.title }}</h3>
+                                    <p class="event-time">
+                                        <i class="fas fa-clock"></i> {{ event.event_date.strftime('%I:%M %p') }}
+                                    </p>
+                                    <p class="event-location">
+                                        <i class="fas fa-map-marker-alt"></i> {{ event.location }}
+                                    </p>
+                                    <p class="event-attendees">
+                                        <i class="fas fa-users"></i> {{ event.get_attendee_count() }} attending
+                                    </p>
+                                    <a href="/event/{{ event.id }}" class="btn-event-details">View Details</a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-results">No upcoming events found.</p>
+                {% endif %}
+            </div>
+
+            <div class="tab-pane" id="attending-tab">
+                <h2>Events I'm Attending</h2>
+                {% if attending_events %}
+                    <div class="events-list">
+                        {% for event in attending_events %}
+                            <div class="event-card">
+                                <div class="event-date-badge">
+                                    <span class="event-month">{{ event.event_date.strftime('%b') }}</span>
+                                    <span class="event-day">{{ event.event_date.strftime('%d') }}</span>
+                                </div>
+                                <div class="event-details">
+                                    <h3 class="event-title">{{ event.title }}</h3>
+                                    <p class="event-time">
+                                        <i class="fas fa-clock"></i> {{ event.event_date.strftime('%I:%M %p') }}
+                                    </p>
+                                    <p class="event-location">
+                                        <i class="fas fa-map-marker-alt"></i> {{ event.location }}
+                                    </p>
+                                    <p class="event-attendees">
+                                        <i class="fas fa-users"></i> {{ event.get_attendee_count() }} attending
+                                    </p>
+                                    <a href="/event/{{ event.id }}" class="btn-event-details">View Details</a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-results">You're not attending any events yet.</p>
+                {% endif %}
+            </div>
+
+            <div class="tab-pane" id="myevents-tab">
+                <h2>My Events</h2>
+                {% if user_events %}
+                    <div class="events-list">
+                        {% for event in user_events %}
+                            <div class="event-card">
+                                <div class="event-date-badge">
+                                    <span class="event-month">{{ event.event_date.strftime('%b') }}</span>
+                                    <span class="event-day">{{ event.event_date.strftime('%d') }}</span>
+                                </div>
+                                <div class="event-details">
+                                    <h3 class="event-title">{{ event.title }}</h3>
+                                    <p class="event-time">
+                                        <i class="fas fa-clock"></i> {{ event.event_date.strftime('%I:%M %p') }}
+                                    </p>
+                                    <p class="event-location">
+                                        <i class="fas fa-map-marker-alt"></i> {{ event.location }}
+                                    </p>
+                                    <p class="event-attendees">
+                                        <i class="fas fa-users"></i> {{ event.get_attendee_count() }} attending
+                                    </p>
+                                    <a href="/event/{{ event.id }}" class="btn-event-details">View Details</a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="no-results">You haven't created any events yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab navigation
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+           
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Remove active class from all buttons and panes
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanes.forEach(pane => pane.classList.remove('active'));
+                   
+                    // Add active class to clicked button
+                    button.classList.add('active');
+                   
+                    // Show corresponding tab pane
+                    const tabId = button.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

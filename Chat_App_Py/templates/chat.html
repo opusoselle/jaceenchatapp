@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+    <style>
+        /* Room Announcement Styles */
+        .room-announcement-container {
+            background-color: #f8f2ff;
+            border-left: 4px solid #6558f5;
+            padding: 15px;
+            margin: 0 0 20px 0;
+            border-radius: 0 5px 5px 0;
+            position: relative;
+        }
+        
+        .room-announcement-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .room-announcement-header i {
+            color: #6558f5;
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        
+        .room-announcement-title {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .room-announcement-author {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: #666;
+            margin-left: auto;
+        }
+        
+        .room-announcement-author img {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 5px;
+            object-fit: cover;
+        }
+        
+        .room-announcement-content {
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .room-announcement-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+        
+        .view-all-announcements {
+            font-size: 14px;
+            color: #6558f5;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+        
+        .view-all-announcements i {
+            margin-left: 5px;
+            font-size: 12px;
+        }
+        
+        .view-all-announcements:hover {
+            text-decoration: underline;
+        }
+        
+        .new-announcement-btn {
+            background-color: #6558f5;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-left: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .new-announcement-btn i {
+            margin-right: 5px;
+        }
+        
+        .new-announcement-btn:hover {
+            background-color: #5048d5;
+        }
+        
+        .no-announcements {
+            font-style: italic;
+            color: #777;
+        }
+        
+        /* Additional styles for notifications */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background-color: #6558f5;
+            color: white;
+            border-radius: 5px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 4.7s;
+        }
+        
+        .notification i {
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+        
+        /* Styles for deleted and edited messages */
+        .deleted-message .message-text {
+            font-style: italic;
+            color: #999;
+        }
+        
+        .edited-message .message-text:after {
+            content: " (edited)";
+            font-size: 12px;
+            color: #999;
+            font-style: italic;
+        }
+        
+        /* Styles for edit interface */
+        .edit-message-input {
+            margin-top: 5px;
+        }
+        
+        .message-edit-textarea {
+            width: 100%;
+            min-height: 60px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 5px;
+            font-family: inherit;
+            font-size: inherit;
+        }
+        
+        .edit-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .edit-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px 10px;
+            margin-left: 5px;
+            border-radius: 3px;
+        }
+        
+        .save-edit {
+            background-color: #4caf50 !important;
+            color: white;
+        }
+        
+        .cancel-edit {
+            background-color: #f44336 !important;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container chat-container">
+        <div class="chat-header">
+            <div class="room-info">
+                <h1>{{ room_code }}
+                    {% if room.is_private %}
+                    <i class="fas fa-lock" title="Private Room"></i>
+                    {% endif %}
+                </h1>
+                <div class="room-meta">
+                    <p class="room-creator">Created by: {{ room.created_by }}</p>
+                    <p class="room-topic"><i class="fas fa-hashtag"></i> {{ room.topic }}</p>
+                    {% if room.description %}
+                    <p class="room-description">{{ room.description }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="room-actions">
+                {% if is_admin %}
+                <a href="/room/{{ room.id }}/manage" class="btn-manage"><i class="fas fa-cog"></i> Manage Room</a>
+                {% endif %}
+                <button id="leaveBtn" class="btn-leave"><i class="fas fa-sign-out-alt"></i> Leave Room</button>
+            </div>
+        </div>
+        
+        <!-- Room Announcements Section -->
+        {% if room_announcements %}
+        <div class="room-announcement-container">
+            <div class="room-announcement-header">
+                <i class="fas fa-bullhorn"></i>
+                <span class="room-announcement-title">Announcement</span>
+                <div class="room-announcement-author">
+                    <img src="/static/uploads/profile_pics/{{ room_announcements[0].user.profile_pic }}" alt="{{ room_announcements[0].user.username }}">
+                    {{ room_announcements[0].user.username }} • {{ room_announcements[0].created_at.strftime('%b %d, %Y') }}
+                </div>
+            </div>
+            <div class="room-announcement-content">
+                {{ room_announcements[0].content }}
+            </div>
+            <div class="room-announcement-actions">
+                {% if room_announcements|length > 1 %}
+                <a href="/chat/{{ room.name }}/announcements" class="view-all-announcements">
+                    View all announcements ({{ room_announcements|length }}) <i class="fas fa-chevron-right"></i>
+                </a>
+                {% endif %}
+                {% if is_admin or is_moderator %}
+                <a href="/newsfeed/create_announcement?room_id={{ room.id }}" class="new-announcement-btn">
+                    <i class="fas fa-plus"></i> New Announcement
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% elif is_admin or is_moderator %}
+        <div class="room-announcement-container">
+            <div class="room-announcement-header">
+                <i class="fas fa-bullhorn"></i>
+                <span class="room-announcement-title">Announcements</span>
+            </div>
+            <div class="room-announcement-content no-announcements">
+                No announcements yet for this room. As a {{ 'room administrator' if is_admin else 'moderator' }}, you can create the first announcement.
+            </div>
+            <div class="room-announcement-actions">
+                <a href="/newsfeed/create_announcement?room_id={{ room.id }}" class="new-announcement-btn">
+                    <i class="fas fa-plus"></i> Create Announcement
+                </a>
+            </div>
+        </div>
+        {% endif %}
+       
+        <!-- Hidden elements to store room_code and username for JavaScript -->
+        <span id="room_code" data-room="{{ room_code }}" hidden></span>
+        <span id="room_id" data-id="{{ room.id }}" hidden></span>
+        <span id="username" data-username="{{ username }}" hidden></span>
+        <span id="profile_pic" data-pic="{{ user.profile_pic }}" hidden></span>
+        <span id="user_id" data-id="{{ user.id }}" hidden></span>
+
+        <div class="chat-content">
+            <!-- Online users section -->
+            <div class="online-users">
+                <h3><i class="fas fa-users"></i> Online Users</h3>
+                <ul id="user-list"></ul>
+            </div>
+
+            <div id="chat">
+                <ul id="messages">
+                    {% for message in recent_messages %}
+                    <li class="message-item {% if message.username == username %}current-user{% endif %}" data-message-id="{{ message.id }}">
+                        <div class="message-bubble {% if message.username == username %}own-message{% endif %}">
+                            <div class="message-avatar">
+                                <img src="/static/uploads/profile_pics/{{ message.user.profile_pic }}" alt="{{ message.username }}'s avatar" class="avatar-img">
+                            </div>
+                            <div class="message-content">
+                                <div class="message-header">
+                                    <strong class="username">
+                                        {{ message.username }}
+                                        {% if room.is_admin(message.user_id) %}
+                                        <span class="role-badge role-admin">Admin</span>
+                                        {% elif room.is_moderator(message.user_id) %}
+                                        <span class="role-badge role-moderator">Mod</span>
+                                        {% endif %}
+                                    </strong>
+                                    <span class="timestamp">{{ message.timestamp.strftime('%I:%M %p') }}</span>
+                                </div>
+                                <span class="message-text">{{ message.message }}</span>
+                                
+                                {% if message.file %}
+                                <div class="message-attachment">
+                                    {% if message.file.file_type == 'image' %}
+                                    <div class="image-attachment">
+                                        <a href="/files/{{ message.file.filename }}" target="_blank">
+                                            <img src="/files/{{ message.file.filename }}" alt="{{ message.file.original_filename }}" class="attachment-preview">
+                                        </a>
+                                    </div>
+                                    {% else %}
+                                    <div class="file-attachment">
+                                        <a href="/files/{{ message.file.filename }}" target="_blank" class="file-link">
+                                            <i class="fas {% if message.file.file_type == 'document' %}fa-file-alt{% elif message.file.file_type == 'video' %}fa-file-video{% elif message.file.file_type == 'audio' %}fa-file-audio{% else %}fa-file{% endif %}"></i>
+                                            {{ message.file.original_filename }}
+                                            <span class="file-size">{{ (message.file.file_size / 1024)|round(1) }} KB</span>
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                
+                                {% if message.username == username %}
+                                <div class="message-actions">
+                                    <button class="message-action edit-message" data-message-id="{{ message.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="message-action delete-message" data-message-id="{{ message.id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <!-- Typing indicator -->
+                <div id="typing-indicator" class="typing-indicator"></div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div id="file-preview" class="file-preview" style="display: none;">
+                <div class="preview-content">
+                    <span id="file-name" class="file-name"></span>
+                    <button id="remove-file" class="remove-file"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <div class="chat-input">
+                <button id="attachBtn" class="btn-attach"><i class="fas fa-paperclip"></i></button>
+                <input id="message" type="text" placeholder="Type a message" required>
+                <button id="sendBtn" class="btn-send"><i class="fas fa-paper-plane"></i></button>
+            </div>
+            
+            <input type="file" id="file-input" style="display: none;">
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Initialize Socket.IO connection
+            const socket = io({
+                reconnectionAttempts: 5,
+                timeout: 10000
+            });
+            
+            // Connection status tracking
+            let isConnected = false;
+
+            // Fetch room and user info from DOM
+            const roomElement = document.getElementById("room_code");
+            const roomIdElement = document.getElementById("room_id");
+            const usernameElement = document.getElementById("username");
+            const profilePicElement = document.getElementById("profile_pic");
+            const userIdElement = document.getElementById("user_id");
+
+            if (!roomElement || !usernameElement || !profilePicElement || !roomIdElement || !userIdElement) {
+                console.error("Error: Required data elements are missing in HTML.");
+                showNotification("Error: Missing required data. Please refresh the page.", "error");
+                return;
+            }
+
+            const room = roomElement.dataset.room;
+            const roomId = roomIdElement.dataset.id;
+            const username = usernameElement.dataset.username;
+            const profilePic = profilePicElement.dataset.pic;
+            const userId = userIdElement.dataset.id;
+
+            // Get DOM elements
+            const messageInput = document.getElementById("message");
+            const messagesList = document.getElementById("messages");
+            const sendBtn = document.getElementById("sendBtn");
+            const leaveBtn = document.getElementById("leaveBtn");
+            const userList = document.getElementById("user-list");
+            const typingIndicator = document.getElementById("typing-indicator");
+            
+            // File sharing elements
+            const attachBtn = document.getElementById("attachBtn");
+            const fileInput = document.getElementById("file-input");
+            const filePreview = document.getElementById("file-preview");
+            const fileName = document.getElementById("file-name");
+            const removeFileBtn = document.getElementById("remove-file");
+            
+            let selectedFile = null;
+            let fileId = null;
+            let isLeavingRoom = false;
+
+            // Ensure required elements exist
+            if (!messageInput || !messagesList || !sendBtn || !leaveBtn || !userList || !typingIndicator ||
+                !attachBtn || !fileInput || !filePreview || !fileName || !removeFileBtn) {
+                console.error("Error: One or more required DOM elements are missing.");
+                showNotification("Error: Missing UI elements. Please refresh the page.", "error");
+                return;
+            }
+
+            // Socket connection event handlers
+            socket.on('connect', () => {
+                isConnected = true;
+                console.log('Connected to server');
+                
+                // Join the chat room when connection is established
+                joinRoom();
+            });
+            
+            socket.on('disconnect', () => {
+                isConnected = false;
+                console.log('Disconnected from server');
+                
+                if (!isLeavingRoom) {
+                    showNotification("Connection lost. Attempting to reconnect...", "error");
+                }
+            });
+            
+            socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                showNotification("Error connecting to chat server", "error");
+            });
+            
+            // Function to join room
+            function joinRoom() {
+    if (isConnected) {
+        socket.emit("join", { room, username });
+        console.log("Attempting to join room:", room);
+    }
+}
+
+            // Send message on button click
+            sendBtn.addEventListener("click", sendMessage);
+
+            // Send message when Enter key is pressed
+            messageInput.addEventListener("keypress", (event) => {
+                if (event.key === "Enter") {
+                    sendMessage();
+                }
+            });
+
+            // File attachment handling
+            attachBtn.addEventListener("click", () => {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener("change", (event) => {
+                if (event.target.files.length > 0) {
+                    selectedFile = event.target.files[0];
+                    fileName.textContent = selectedFile.name;
+                    filePreview.style.display = "block";
+                }
+            });
+            
+            removeFileBtn.addEventListener("click", () => {
+                selectedFile = null;
+                fileId = null;
+                fileInput.value = "";
+                filePreview.style.display = "none";
+            });
+
+            // Typing indicator: detect when user starts typing
+            let typingTimeout;
+            messageInput.addEventListener("input", () => {
+                if (!isConnected) return;
+                
+                // Emit typing status
+                socket.emit("typing", { room, username, typing: true });
+               
+                // Clear any existing timeout
+                clearTimeout(typingTimeout);
+               
+                // Set a new timeout to stop the typing indicator after 2 seconds of inactivity
+                typingTimeout = setTimeout(() => {
+                    if (isConnected) {
+                        socket.emit("typing", { room, username, typing: false });
+                    }
+                }, 2000);
+            });
+
+            // When user stops typing due to blur (clicking outside the input)
+            messageInput.addEventListener("blur", () => {
+                clearTimeout(typingTimeout);
+                if (isConnected) {
+                    socket.emit("typing", { room, username, typing: false });
+                }
+            });
+
+            // Leave room
+            leaveBtn.addEventListener("click", () => {
+                if (!isConnected) {
+                    showNotification("Not connected to server. Please refresh and try again.", "error");
+                    return;
+                }
+                
+                isLeavingRoom = true;
+                leaveBtn.disabled = true;
+                leaveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Leaving...';
+                
+                socket.emit("leave", { room, username }, (response) => {
+                    // This callback will be triggered regardless of success/failure
+                    // Navigate home after a short delay to allow the socket to send the leave message
+                    setTimeout(() => {
+                        window.location.href = "/";
+                    }, 500);
+                });
+                
+                // Failsafe: redirect anyway after 3 seconds if socket response doesn't come
+                setTimeout(() => {
+                    if (window.location.pathname.includes('/chat/')) {
+                        window.location.href = "/";
+                    }
+                }, 3000);
+            });
+
+            // Function to send message
+            async function sendMessage() {
+                if (!isConnected) {
+                    showNotification("Not connected to server. Please refresh and try again.", "error");
+                    return;
+                }
+                
+                const message = messageInput.value.trim();
+                
+                // If neither message nor file, don't send
+                if (!message && !selectedFile) return;
+                
+                // Disable send button during processing
+                sendBtn.disabled = true;
+                
+                try {
+                    // If there's a file, upload it first
+                    if (selectedFile) {
+                        try {
+                            const formData = new FormData();
+                            formData.append('file', selectedFile);
+                            formData.append('room_id', roomId);
+                            
+                            const response = await fetch('/upload_file', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            if (!response.ok) {
+                                throw new Error('File upload failed');
+                            }
+                            
+                            const data = await response.json();
+                            fileId = data.file_id;
+                            
+                            // Clear file preview
+                            selectedFile = null;
+                            fileInput.value = "";
+                            filePreview.style.display = "none";
+                        } catch (error) {
+                            console.error('Error uploading file:', error);
+                            showNotification('Failed to upload file. Please try again.', 'error');
+                            sendBtn.disabled = false;
+                            return;
+                        }
+                    }
+                    
+                    // Send message if there's text or a file
+                    if (message || fileId) {
+                        socket.emit("message", { 
+                            room, 
+                            username, 
+                            message, 
+                            file_id: fileId 
+                        }, (response) => {
+                            if (response && response.error) {
+                                console.error("Error sending message:", response.error);
+                                showNotification("Failed to send message. Please try again.", "error");
+                            }
+                        });
+                        
+                        // Clear message input and reset file data
+                        messageInput.value = "";
+                        fileId = null;
+                        
+                        // Clear typing indicator when message is sent
+                        clearTimeout(typingTimeout);
+                        socket.emit("typing", { room, username, typing: false });
+                    }
+                } catch (error) {
+                    console.error("Error in sendMessage:", error);
+                    showNotification("An error occurred while sending your message.", "error");
+                } finally {
+                    // Re-enable send button
+                    sendBtn.disabled = false;
+                }
+            }
+
+            // Display received messages
+            socket.on("message", (msg) => {
+                try {
+                    if (!msg) {
+                        console.error("Received empty message data");
+                        return;
+                    }
+                    
+                    if (typeof msg === 'string') {
+                        // Handle system messages
+                        const li = document.createElement("li");
+                        li.className = "system-message";
+                        li.textContent = msg;
+                        messagesList.appendChild(li);
+                    } else if ((msg.username && (msg.message || msg.file))) {
+                        // Handle user messages
+                        const isCurrentUser = msg.username === username;
+                        const li = document.createElement("li");
+                        li.className = `message-item ${isCurrentUser ? 'current-user' : ''}`;
+                        
+                        // Add data-message-id attribute for edit/delete functionality
+                        if (msg.id) {
+                            li.setAttribute('data-message-id', msg.id);
+                        }
+                       
+                        let messageActions = '';
+                        if (isCurrentUser) {
+                            messageActions = `
+                                <div class="message-actions">
+                                    <button class="message-action edit-message" data-message-id="${msg.id}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="message-action delete-message" data-message-id="${msg.id}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            `;
+                        }
+                        
+                        const bubbleHtml = `
+                            <div class="message-bubble ${isCurrentUser ? 'own-message' : ''}">
+                                <div class="message-avatar">
+                                    <img src="/static/uploads/profile_pics/${msg.profile_pic}" alt="${msg.username}'s avatar" class="avatar-img">
+                                </div>
+                                <div class="message-content">
+                                    <div class="message-header">
+                                        <strong class="username">
+                                            ${msg.username}
+                                            ${msg.is_admin ? '<span class="role-badge role-admin">Admin</span>' : ''}
+                                            ${!msg.is_admin && msg.is_moderator ? '<span class="role-badge role-moderator">Mod</span>' : ''}
+                                        </strong>
+                                        <span class="timestamp">${msg.timestamp}</span>
+                                    </div>
+                                    ${msg.message ? `<span class="message-text">${msg.message}</span>` : ''}
+                                    ${msg.file ? renderFileAttachment(msg.file) : ''}
+                                    ${messageActions}
+                                </div>
+                            </div>
+                        `;
+                        
+                        li.innerHTML = bubbleHtml;
+                        messagesList.appendChild(li);
+                    } else {
+                        console.error("Invalid message data:", msg);
+                        return;
+                    }
+                   
+                    // Scroll to bottom
+                    messagesList.scrollTop = messagesList.scrollHeight;
+                    
+                    // Setup message actions for new messages
+                    setupMessageActions();
+                } catch (error) {
+                    console.error("Error handling message:", error);
+                }
+            });
+            
+            // Listen for system messages about users leaving
+            socket.on("user_left", (data) => {
+                if (data && data.message) {
+                    const li = document.createElement("li");
+                    li.className = "system-message";
+                    li.textContent = data.message;
+                    messagesList.appendChild(li);
+                    
+                    // Scroll to bottom
+                    messagesList.scrollTop = messagesList.scrollHeight;
+                }
+            });
+            
+            // Listen for new announcements
+            socket.on("new_announcement", (announcement) => {
+                try {
+                    // Check if this is the first announcement
+                    const existingContainer = document.querySelector('.room-announcement-container');
+                    
+                    if (existingContainer) {
+                        // Update the existing announcement container
+                        const header = existingContainer.querySelector('.room-announcement-header');
+                        const content = existingContainer.querySelector('.room-announcement-content');
+                        const actions = existingContainer.querySelector('.room-announcement-actions');
+                        
+                        // Update author and timestamp
+                        const authorHTML = `
+                            <img src="/static/uploads/profile_pics/${announcement.profile_pic}" alt="${announcement.username}">
+                            ${announcement.username} • ${announcement.timestamp.split(' at ')[0]}
+                        `;
+                        header.querySelector('.room-announcement-author').innerHTML = authorHTML;
+                        
+                        // Update content
+                        content.textContent = announcement.content;
+                        content.classList.remove('no-announcements');
+                        
+                        // Update the view all link to show the count
+                        let viewAllLink = actions.querySelector('.view-all-announcements');
+                        if (!viewAllLink) {
+                            viewAllLink = document.createElement('a');
+                            viewAllLink.className = 'view-all-announcements';
+                            viewAllLink.href = `/chat/${room}/announcements`;
+                            actions.prepend(viewAllLink);
+                        }
+                        
+                        viewAllLink.innerHTML = `View all announcements <i class="fas fa-chevron-right"></i>`;
+                    } else {
+                        // Create a new announcement container
+                        const container = document.createElement('div');
+                        container.className = 'room-announcement-container';
+                        container.innerHTML = `
+                            <div class="room-announcement-header">
+                                <i class="fas fa-bullhorn"></i>
+                                <span class="room-announcement-title">Announcement</span>
+                                <div class="room-announcement-author">
+                                    <img src="/static/uploads/profile_pics/${announcement.profile_pic}" alt="${announcement.username}">
+                                    ${announcement.username} • ${announcement.timestamp.split(' at ')[0]}
+                                </div>
+                            </div>
+                            <div class="room-announcement-content">
+                                ${announcement.content}
+                            </div>
+                            <div class="room-announcement-actions">
+                                <a href="/chat/${room}/announcements" class="view-all-announcements">
+                                    View all announcements <i class="fas fa-chevron-right"></i>
+                                </a>
+                                ${userId && (msg.is_admin || msg.is_moderator) ? `
+                                    <a href="/newsfeed/create_announcement?room_id=${roomId}" class="new-announcement-btn">
+                                        <i class="fas fa-plus"></i> New Announcement
+                                    </a>
+                                ` : ''}
+                            </div>
+                        `;
+                        
+                        // Insert after chat header
+                        const chatHeader = document.querySelector('.chat-header');
+                        chatHeader.insertAdjacentElement('afterend', container);
+                    }
+                    
+                    showNotification(`New announcement from ${announcement.username}`, "announcement");
+                } catch (error) {
+                    console.error("Error handling announcement:", error);
+                }
+            });
+            
+            // Helper function to show notifications
+            function showNotification(message, type = "info") {
+                const notification = document.createElement('div');
+                notification.className = `notification notification-${type}`;
+                
+                let icon = 'fa-info-circle';
+                if (type === 'error') icon = 'fa-exclamation-circle';
+                if (type === 'announcement') icon = 'fa-bullhorn';
+                
+                notification.innerHTML = `
+                    <i class="fas ${icon}"></i> ${message}
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Remove notification after 5 seconds
+                setTimeout(() => {
+                    notification.remove();
+                }, 5000);
+            }
+            
+            // Helper function to render file attachments
+            function renderFileAttachment(file) {
+                if (file.file_type === 'image') {
+                    return `
+                        <div class="message-attachment">
+                            <div class="image-attachment">
+                                <a href="/files/${file.filename}" target="_blank">
+                                    <img src="/files/${file.filename}" alt="${file.original_filename}" class="attachment-preview">
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    let fileIcon = 'fa-file';
+                    if (file.file_type === 'document') fileIcon = 'fa-file-alt';
+                    if (file.file_type === 'video') fileIcon = 'fa-file-video';
+                    if (file.file_type === 'audio') fileIcon = 'fa-file-audio';
+                    
+                    const fileSize = (file.file_size / 1024).toFixed(1);
+                    
+                    return `
+                        <div class="message-attachment">
+                            <div class="file-attachment">
+                                <a href="/files/${file.filename}" target="_blank" class="file-link">
+                                    <i class="fas ${fileIcon}"></i>
+                                    ${file.original_filename}
+                                    <span class="file-size">${fileSize} KB</span>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // Update online users list
+            socket.on("user_list", (data) => {
+                try {
+                    if (!data.users) {
+                        console.error("Invalid user list data:", data);
+                        return;
+                    }
+
+                    // Clear current list
+                    userList.innerHTML = "";
+                   
+                    // Add each user to the list
+                    data.users.forEach((user, index) => {
+                        const li = document.createElement("li");
+                        li.className = "user-item";
+                        const profilePic = data.user_profiles && data.user_profiles[index] ? data.user_profiles[index] : 'default.png';
+                        const userRole = data.user_roles && data.user_roles[index] ? data.user_roles[index] : 'member';
+                        
+                        // Determine role badge
+                        let roleBadge = '';
+                        if (userRole === 'admin') {
+                            roleBadge = '<span class="role-badge role-admin">Admin</span>';
+                        } else if (userRole === 'moderator') {
+                            roleBadge = '<span class="role-badge role-moderator">Mod</span>';
+                        }
+                       
+                        // Highlight the current user
+                        if (user === username) {
+                            li.innerHTML = `
+                                <div class="user-avatar">
+                                    <img src="/static/uploads/profile_pics/${profilePic}" alt="${user}'s avatar" class="avatar-img">
+                                </div>
+                                <div class="user-info">
+                                    <span class="current-user">${user} (you)</span>
+                                    ${roleBadge}
+                                </div>
+                            `;
+                        } else {
+                            li.innerHTML = `
+                                <div class="user-avatar">
+                                    <img src="/static/uploads/profile_pics/${profilePic}" alt="${user}'s avatar" class="avatar-img">
+                                </div>
+                                <div class="user-info">
+                                    <span>${user}</span>
+                                    ${roleBadge}
+                                </div>
+                            `;
+                        }
+                        userList.appendChild(li);
+                    });
+                } catch (error) {
+                    console.error("Error updating user list:", error);
+                }
+            });
+
+            // Update typing indicator
+            socket.on("typing", (data) => {
+                try {
+                    const typingUsers = data.users.filter(user => user !== username);
+                   
+                    if (typingUsers.length === 0) {
+                        typingIndicator.textContent = "";
+                        typingIndicator.style.display = "none";
+                    } else if (typingUsers.length === 1) {
+                        typingIndicator.innerHTML = `<i class="fas fa-keyboard"></i> ${typingUsers[0]} is typing...`;
+                        typingIndicator.style.display = "block";
+                    } else if (typingUsers.length === 2) {
+                        typingIndicator.innerHTML = `<i class="fas fa-keyboard"></i> ${typingUsers[0]} and ${typingUsers[1]} are typing...`;
+                        typingIndicator.style.display = "block";
+                    } else {
+                        typingIndicator.innerHTML = `<i class="fas fa-keyboard"></i> Several people are typing...`;
+                        typingIndicator.style.display = "block";
+                    }
+                } catch (error) {
+                    console.error("Error updating typing indicator:", error);
+                }
+            });
+            
+            // Message editing and deletion functionality
+            function setupMessageActions() {
+                // Add event listeners for edit buttons
+                document.querySelectorAll('.edit-message').forEach(button => {
+                    // Remove existing event listeners to prevent duplicates
+                    button.removeEventListener('click', handleEditMessage);
+                    button.addEventListener('click', handleEditMessage);
+                });
+                
+                // Add event listeners for delete buttons
+                document.querySelectorAll('.delete-message').forEach(button => {
+                    // Remove existing event listeners to prevent duplicates
+                    button.removeEventListener('click', handleDeleteMessage);
+                    button.addEventListener('click', handleDeleteMessage);
+                });
+            }
+            
+            function handleEditMessage() {
+                const messageId = this.getAttribute('data-message-id');
+                const messageItem = document.querySelector(`.message-item[data-message-id="${messageId}"]`);
+                const messageText = messageItem.querySelector('.message-text');
+                
+                if (!messageText) {
+                    console.error("Message text element not found");
+                    return;
+                }
+                
+                const originalText = messageText.textContent;
+                
+                // Check if already in edit mode
+                if (messageItem.querySelector('.edit-message-input')) {
+                    return;
+                }
+                
+                // Replace message text with editable input
+                const editInput = document.createElement('div');
+                editInput.className = 'edit-message-input';
+                editInput.innerHTML = `
+                    <textarea class="message-edit-textarea">${originalText}</textarea>
+                    <div class="edit-actions">
+                        <button class="save-edit" data-message-id="${messageId}">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="cancel-edit" data-message-id="${messageId}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Hide original message text and actions
+                messageText.style.display = 'none';
+                const messageActions = messageItem.querySelector('.message-actions');
+                if (messageActions) {
+                    messageActions.style.display = 'none';
+                }
+                
+                // Add edit input
+                messageItem.querySelector('.message-content').appendChild(editInput);
+                
+                // Focus on textarea
+                editInput.querySelector('textarea').focus();
+                
+                // Add event listeners for save and cancel
+                editInput.querySelector('.save-edit').addEventListener('click', function() {
+                    const newText = editInput.querySelector('textarea').value.trim();
+                    if (newText && newText !== originalText) {
+                        // Send the edited message
+                        socket.emit('edit_message', {
+                            room: room,
+                            message_id: messageId,
+                            new_text: newText
+                        });
+                        
+                        // Update UI
+                        messageText.textContent = newText;
+                        messageItem.classList.add('edited-message');
+                    }
+                    
+                    // Restore original message display
+                    messageText.style.display = 'block';
+                    if (messageActions) {
+                        messageActions.style.display = 'flex';
+                    }
+                    editInput.remove();
+                });
+                
+                editInput.querySelector('.cancel-edit').addEventListener('click', function() {
+                    // Restore original message display
+                    messageText.style.display = 'block';
+                    if (messageActions) {
+                        messageActions.style.display = 'flex';
+                    }
+                    editInput.remove();
+                });
+            }
+            
+            function handleDeleteMessage() {
+                if (confirm('Are you sure you want to delete this message?')) {
+                    const messageId = this.getAttribute('data-message-id');
+                    
+                    // Send delete request
+                    socket.emit('delete_message', {
+                        room: room,
+                        message_id: messageId
+                    });
+                    
+                    // Remove message from UI
+                    const messageItem = document.querySelector(`.message-item[data-message-id="${messageId}"]`);
+                    if (messageItem) {
+                        messageItem.classList.add('deleted-message');
+                        messageItem.querySelector('.message-text').innerHTML = '<i>This message has been deleted</i>';
+                        const actions = messageItem.querySelector('.message-actions');
+                        if (actions) actions.remove();
+                    }
+                }
+            }
+            
+            // Handle edited messages from others
+            socket.on('message_edited', (data) => {
+                try {
+                    const messageItem = document.querySelector(`.message-item[data-message-id="${data.message_id}"]`);
+                    if (messageItem) {
+                        messageItem.querySelector('.message-text').textContent = data.new_text;
+                        messageItem.classList.add('edited-message');
+                    }
+                } catch (error) {
+                    console.error("Error handling edited message:", error);
+                }
+            });
+            
+            // Handle deleted messages from others
+            socket.on('message_deleted', (data) => {
+                try {
+                    const messageItem = document.querySelector(`.message-item[data-message-id="${data.message_id}"]`);
+                    if (messageItem) {
+                        messageItem.classList.add('deleted-message');
+                        messageItem.querySelector('.message-text').innerHTML = '<i>This message has been deleted</i>';
+                        const actions = messageItem.querySelector('.message-actions');
+                        if (actions) actions.remove();
+                    }
+                } catch (error) {
+                    console.error("Error handling deleted message:", error);
+                }
+            });
+            
+            // Scroll to bottom on load
+            messagesList.scrollTop = messagesList.scrollHeight;
+            
+            // Setup message actions on load
+            setupMessageActions();
+        });
+    </script>
+</body>
+</html>

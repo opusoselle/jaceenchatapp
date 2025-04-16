@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        /* Announcement Slideshow Styles */
+        .announcement-slideshow-container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .announcement-header {
+            display: flex;
+            align-items: center;
+            background-color: #6558f5;
+            color: white;
+            padding: 15px 20px;
+        }
+        
+        .announcement-header i {
+            font-size: 22px;
+            margin-right: 12px;
+        }
+        
+        .announcement-header h2 {
+            margin: 0;
+            font-weight: 600;
+            flex-grow: 1;
+        }
+        
+        .slideshow-controls {
+            display: flex;
+            align-items: center;
+        }
+        
+        .prev-slide, .next-slide {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 5px 10px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        
+        .prev-slide:hover, .next-slide:hover {
+            opacity: 1;
+        }
+        
+        .slide-indicator {
+            margin: 0 10px;
+            font-size: 14px;
+        }
+        
+        .announcement-slides {
+            position: relative;
+            min-height: 180px;
+        }
+        
+        .announcement-slide {
+            display: none;
+            padding: 20px;
+            animation: fadeEffect 0.8s;
+        }
+        
+        .announcement-slide.active {
+            display: block;
+        }
+        
+        @keyframes fadeEffect {
+            from {opacity: 0.7;}
+            to {opacity: 1;}
+        }
+        
+        .announcement-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .announcement-author {
+            display: flex;
+            align-items: center;
+        }
+        
+        .author-pic {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+        }
+        
+        .author-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .author-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .timestamp {
+            font-size: 12px;
+            color: #777;
+        }
+        
+        .announcement-content {
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-line;
+        }
+        
+        .announcement-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        
+        .announcement-stats {
+            display: flex;
+            gap: 15px;
+            color: #666;
+        }
+        
+        .view-more {
+            color: #6558f5;
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+        }
+        
+        .view-more:hover {
+            text-decoration: underline;
+        }
+        
+        /* Recent Updates Styles */
+        .dashboard-section {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+            padding: 20px;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .section-header h2 {
+            display: flex;
+            align-items: center;
+            margin: 0;
+            font-size: 1.3rem;
+            color: #333;
+        }
+        
+        .section-header h2 i {
+            margin-right: 10px;
+            color: #6558f5;
+        }
+        
+        .view-all {
+            color: #6558f5;
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .view-all i {
+            margin-left: 5px;
+            font-size: 12px;
+        }
+        
+        .view-all:hover {
+            text-decoration: underline;
+        }
+        
+        .updates-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .update-card {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .update-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .update-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .user-avatar-sm {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+        }
+        
+        .update-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .update-info .username {
+            font-weight: bold;
+            margin: 0;
+            color: #333;
+        }
+        
+        .update-info .timestamp {
+            font-size: 12px;
+            color: #777;
+            margin: 0;
+        }
+        
+        .update-content {
+            color: #333;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        
+        .read-more {
+            color: #6558f5;
+            text-decoration: none;
+            font-size: 14px;
+            margin-left: 5px;
+        }
+        
+        .read-more:hover {
+            text-decoration: underline;
+        }
+        
+        .update-footer {
+            display: flex;
+            gap: 15px;
+            font-size: 14px;
+            color: #666;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        
+        .like-count, .comment-count {
+            display: flex;
+            align-items: center;
+        }
+        
+        .like-count i, .comment-count i {
+            margin-right: 5px;
+            font-size: 14px;
+        }
+
+        /* Events Slideshow Styles */
+        .events-slideshow-container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .events-header {
+            display: flex;
+            align-items: center;
+            background-color: #4285f4;  /* Different color than announcements */
+            color: white;
+            padding: 15px 20px;
+        }
+        
+        .events-header i {
+            font-size: 22px;
+            margin-right: 12px;
+        }
+        
+        .events-header h2 {
+            margin: 0;
+            font-weight: 600;
+            flex-grow: 1;
+        }
+        
+        .events-slides {
+            position: relative;
+            min-height: 180px;
+        }
+        
+        .event-slide {
+            display: none;
+            padding: 20px;
+            animation: fadeEffect 0.8s;
+        }
+        
+        .event-slide.active {
+            display: block;
+        }
+        
+        .event-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .event-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin: 0 0 5px 0;
+        }
+        
+        .event-metadata {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .event-date, .event-time, .event-location {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .event-date i, .event-time i, .event-location i {
+            margin-right: 5px;
+            color: #4285f4;
+        }
+        
+        .event-description {
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-line;
+        }
+        
+        .event-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        
+        .event-organizer {
+            display: flex;
+            align-items: center;
+        }
+        
+        .event-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-event-action {
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-event-action i {
+            margin-right: 5px;
+        }
+        
+        .btn-view-event {
+            background-color: #4285f4;
+            color: white;
+        }
+        
+        .btn-view-event:hover {
+            background-color: #3367d6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container home-container">
+        <div class="user-profile-header">
+            <div class="profile-summary">
+                <div class="user-avatar">
+                    <img src="/static/uploads/profile_pics/{{ user.profile_pic }}" alt="Profile" class="profile-pic">
+                    <span class="status-dot status-{{ user.status }}"></span>
+                </div>
+                <div class="user-info">
+                    <h1>Welcome, {{ username }}</h1>
+                    {% if user.status_message %}
+                        <p class="status-message">{{ user.status_message }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="profile-actions">
+                <a href="/profile" class="btn-action"><i class="fas fa-user-edit"></i> Edit Profile</a>
+                <a href="/logout" class="btn-action btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+        
+        <!-- Announcements Slideshow (if there are announcements) -->
+        {% if announcements %}
+        <div class="announcement-slideshow-container">
+            <div class="announcement-header">
+                <i class="fas fa-bullhorn"></i>
+                <h2>Community Announcements</h2>
+                <div class="slideshow-controls">
+                    <button class="prev-slide" data-target="announcement" title="Previous announcement"><i class="fas fa-chevron-left"></i></button>
+                    <span class="slide-indicator" id="announcement-indicator">1/{{ announcements|length }}</span>
+                    <button class="next-slide" data-target="announcement" title="Next announcement"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="announcement-slides">
+                {% for announcement in announcements %}
+                <div class="announcement-slide {% if loop.first %}active{% endif %}">
+                    <div class="announcement-content-wrapper">
+                        <div class="announcement-author">
+                            <img src="/static/uploads/profile_pics/{{ announcement.user.profile_pic }}" alt="{{ announcement.user.username }}" class="author-pic">
+                            <div class="author-info">
+                                <span class="author-name">{{ announcement.user.username }}</span>
+                                <span class="timestamp">{{ announcement.created_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                            </div>
+                        </div>
+                        <div class="announcement-content">
+                            {{ announcement.content }}
+                        </div>
+                        <div class="announcement-footer">
+                            <div class="announcement-stats">
+                                <span><i class="far fa-thumbs-up"></i> {{ announcement.like_count }}</span>
+                                <span><i class="far fa-comment"></i> {{ announcement.comments|length }}</span>
+                            </div>
+                            <a href="/newsfeed" class="view-more">View in Newsfeed</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Events Slideshow (if there are events) -->
+        {% if events %}
+        <div class="events-slideshow-container">
+            <div class="events-header">
+                <i class="fas fa-calendar-alt"></i>
+                <h2>Upcoming Events</h2>
+                <div class="slideshow-controls">
+                    <button class="prev-slide" data-target="event" title="Previous event"><i class="fas fa-chevron-left"></i></button>
+                    <span class="slide-indicator" id="event-indicator">1/{{ events|length }}</span>
+                    <button class="next-slide" data-target="event" title="Next event"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="events-slides">
+                {% for event in events %}
+                <div class="event-slide {% if loop.first %}active{% endif %}">
+                    <div class="event-content-wrapper">
+                        <h3 class="event-title">{{ event.title }}</h3>
+                        <div class="event-metadata">
+                            <span class="event-date"><i class="far fa-calendar-alt"></i> {{ event.event_date.strftime('%B %d, %Y') }}</span>
+                            <span class="event-time"><i class="far fa-clock"></i> {{ event.event_date.strftime('%I:%M %p') }}</span>
+                            <span class="event-location"><i class="fas fa-map-marker-alt"></i> {{ event.location }}</span>
+                        </div>
+                        <div class="event-description">
+                            {{ event.description }}
+                        </div>
+                        <div class="event-footer">
+                            <div class="event-organizer">
+                                <img src="/static/uploads/profile_pics/{{ event.creator.profile_pic }}" alt="{{ event.creator.username }}" class="author-pic">
+                                <div class="author-info">
+                                    <span class="author-name">{{ event.creator.username }}</span>
+                                    <span class="timestamp">Posted on {{ event.created_at.strftime('%b %d, %Y') }}</span>
+                                </div>
+                            </div>
+                            <div class="event-actions">
+                                <a href="/event/{{ event.id }}" class="btn-event-action btn-view-event">
+                                    <i class="fas fa-calendar-check"></i> View Event
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+       
+        <!-- Quick navigation buttons -->
+        <div class="quick-actions">
+            <a href="/users" class="action-card">
+                <div class="action-icon"><i class="fas fa-users"></i></div>
+                <p>Friends</p>
+                {% if pending_requests_count > 0 %}
+                <span class="count-badge">{{ pending_requests_count }}</span>
+                {% endif %}
+            </a>
+            <a href="/messages" class="action-card">
+                <div class="action-icon"><i class="fas fa-envelope"></i></div>
+                <p>Messages</p>
+            </a>
+            <a href="/events" class="action-card">
+                <div class="action-icon"><i class="fas fa-calendar-alt"></i></div>
+                <p>Events</p>
+            </a>
+            <a href="/browse_rooms" class="action-card">
+                <div class="action-icon"><i class="fas fa-search"></i></div>
+                <p>Browse Rooms</p>
+            </a>
+            <a href="/newsfeed" class="action-card">
+                <div class="action-icon"><i class="fas fa-newspaper"></i></div>
+                <p>Newsfeed</p>
+            </a>
+            <div class="action-card">
+                <div class="action-icon"><i class="fas fa-user-cog"></i></div>
+                <div class="status-options">
+                    <a href="/update_status/online" class="status-option status-online">Online</a>
+                    <a href="/update_status/away" class="status-option status-away">Away</a>
+                    <a href="/update_status/busy" class="status-option status-busy">Busy</a>
+                </div>
+            </div>
+        </div>
+       
+        <!-- Display feedback message if any -->
+        {% if message %}
+            <p class="feedback">{{ message }}</p>
+        {% endif %}
+        
+        <!-- Recent Updates Preview -->
+        {% if recent_updates %}
+        <div class="dashboard-section community-updates">
+            <div class="section-header">
+                <h2><i class="fas fa-rss"></i> Recent Community Updates</h2>
+                <a href="/newsfeed" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+            </div>
+            <div class="updates-container">
+                {% for update in recent_updates %}
+                <div class="update-card">
+                    <div class="update-header">
+                        <img src="/static/uploads/profile_pics/{{ update.user.profile_pic }}" alt="{{ update.user.username }}" class="user-avatar-sm">
+                        <div class="update-info">
+                            <p class="username">{{ update.user.username }}</p>
+                            <p class="timestamp">{{ update.created_at.strftime('%b %d, %Y') }}</p>
+                        </div>
+                    </div>
+                    <div class="update-content">
+                        {{ update.content|truncate(150) }}
+                        {% if update.content|length > 150 %}
+                        <a href="/newsfeed" class="read-more">Read more</a>
+                        {% endif %}
+                    </div>
+                    <div class="update-footer">
+                        <span class="like-count"><i class="far fa-thumbs-up"></i> {{ update.like_count }}</span>
+                        <span class="comment-count"><i class="far fa-comment"></i> {{ update.comments|length }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+       
+        <div class="tabs">
+            <button class="tab-button active" data-tab="join">Join Room</button>
+            <button class="tab-button" data-tab="create">Create Room</button>
+            <button class="tab-button" data-tab="browse">My Rooms</button>
+        </div>
+       
+        <div class="tab-content">
+            <div class="tab-pane active" id="join-tab">
+                <h2>Join Existing Room</h2>
+                <form action="/" method="POST" class="form-section">
+                    <input type="text" name="room_code" placeholder="Enter Room Code" required>
+                    <button type="submit" class="btn-primary"><i class="fas fa-sign-in-alt"></i> Join Room</button>
+                </form>
+            </div>
+           
+            <div class="tab-pane" id="create-tab">
+                <h2>Create New Room</h2>
+                <form action="/" method="POST" class="form-section">
+                    <input type="text" name="room_name" placeholder="Enter Room Name" required>
+                    
+                    <div class="topic-selection">
+                        <label for="topic">Select Topic</label>
+                        <select name="topic" id="topic">
+                            {% for topic in topics %}
+                            <option value="{{ topic.name }}" data-icon="{{ topic.icon }}">{{ topic.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="topic-description-field">
+                        <label for="description">Room Description</label>
+                        <textarea name="description" id="description" placeholder="Describe what this room is about"></textarea>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="is_private" name="is_private" class="toggle-password-field">
+                        <label for="is_private">Private Room</label>
+                    </div>
+                    <div class="password-field" style="display: none;">
+                        <input type="password" name="room_password" placeholder="Room Password" id="room_password">
+                    </div>
+                    <button type="submit" class="btn-primary"><i class="fas fa-plus-circle"></i> Create Room</button>
+                </form>
+            </div>
+           
+            <div class="tab-pane" id="browse-tab">
+                <div class="rooms-container">
+                    {% if public_rooms %}
+                    <div class="rooms-section">
+                        <h2>Public Rooms</h2>
+                        <ul class="rooms-list">
+                            {% for room in public_rooms %}
+                            <li class="room-item">
+                                <div class="room-details">
+                                    <span class="room-name">{{ room.name }}</span>
+                                    <span class="room-topic-tag">{{ room.topic }}</span>
+                                    <span class="room-creator">Created by: {{ room.created_by }}</span>
+                                </div>
+                                <form action="/" method="POST" class="inline-form">
+                                    <input type="hidden" name="room_code" value="{{ room.name }}">
+                                    <button type="submit" class="btn-join"><i class="fas fa-sign-in-alt"></i> Join</button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <p class="no-rooms">No public rooms available. Create one!</p>
+                    {% endif %}
+                   
+                    {% if private_rooms %}
+                    <div class="rooms-section">
+                        <h2>Your Private Rooms</h2>
+                        <ul class="rooms-list">
+                            {% for room in private_rooms %}
+                            <li class="room-item private-room">
+                                <div class="room-details">
+                                    <span class="room-name">{{ room.name }} <i class="fas fa-lock"></i></span>
+                                    <span class="room-topic-tag">{{ room.topic }}</span>
+                                    <span class="room-creator">Created by: {{ room.created_by }}</span>
+                                </div>
+                                <form action="/" method="POST" class="inline-form">
+                                    <input type="hidden" name="room_code" value="{{ room.name }}">
+                                    <button type="submit" class="btn-join"><i class="fas fa-sign-in-alt"></i> Join</button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+   
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Slideshow functionality for both announcements and events
+            function setupSlideshow(type) {
+                const slides = document.querySelectorAll(`.${type}-slide`);
+                const prevButton = document.querySelector(`.prev-slide[data-target="${type}"]`);
+                const nextButton = document.querySelector(`.next-slide[data-target="${type}"]`);
+                const slideIndicator = document.getElementById(`${type}-indicator`);
+                let currentSlideIndex = 0;
+                const totalSlides = slides.length;
+                
+                if (totalSlides === 0) return;
+                
+                // Function to show a specific slide
+                function showSlide(index) {
+                    // Hide all slides
+                    slides.forEach(slide => {
+                        slide.classList.remove('active');
+                    });
+                    
+                    // Show the current slide
+                    slides[index].classList.add('active');
+                    
+                    // Update the indicator text
+                    if (slideIndicator) {
+                        slideIndicator.textContent = `${index + 1}/${totalSlides}`;
+                    }
+                }
+                
+                // Setup event listeners for slideshow controls
+                if (prevButton && nextButton && totalSlides > 0) {
+                    prevButton.addEventListener('click', function() {
+                        currentSlideIndex = (currentSlideIndex - 1 + totalSlides) % totalSlides;
+                        showSlide(currentSlideIndex);
+                    });
+                    
+                    nextButton.addEventListener('click', function() {
+                        currentSlideIndex = (currentSlideIndex + 1) % totalSlides;
+                        showSlide(currentSlideIndex);
+                    });
+                    
+                    // Auto-advance slides every 10 seconds if there's more than one
+                    if (totalSlides > 1) {
+                        setInterval(function() {
+                            currentSlideIndex = (currentSlideIndex + 1) % totalSlides;
+                            showSlide(currentSlideIndex);
+                        }, 10000);
+                    }
+                }
+            }
+            
+            // Initialize slideshows
+            setupSlideshow('announcement');
+            setupSlideshow('event');
+            
+            // Tab navigation
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+           
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Remove active class from all buttons and panes
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanes.forEach(pane => pane.classList.remove('active'));
+                   
+                    // Add active class to clicked button
+                    button.classList.add('active');
+                   
+                    // Show corresponding tab pane
+                    const tabId = button.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+           
+            // Toggle password field for private rooms
+            const privateCheckbox = document.getElementById('is_private');
+            const passwordField = document.querySelector('.password-field');
+           
+            if (privateCheckbox && passwordField) {
+                privateCheckbox.addEventListener('change', function() {
+                    passwordField.style.display = this.checked ? 'block' : 'none';
+                   
+                    // If checkbox is unchecked, clear password field
+                    if (!this.checked) {
+                        document.getElementById('room_password').value = '';
+                    }
+                });
+            }
+            
+            // Enhance the topic dropdown with icons
+            const topicSelect = document.getElementById('topic');
+            if (topicSelect) {
+                // Create a wrapper for the custom dropdown
+                const selectWrapper = document.createElement('div');
+                selectWrapper.className = 'custom-select-wrapper';
+                
+                // Create a display for the selected value with icon
+                const selectDisplay = document.createElement('div');
+                selectDisplay.className = 'custom-select-display';
+                
+                // Get the icon for the initially selected option
+                const initialOption = topicSelect.options[topicSelect.selectedIndex];
+                const initialIcon = initialOption.getAttribute('data-icon');
+                
+                selectDisplay.innerHTML = `
+                    <i class="${initialIcon}"></i>
+                    <span>${initialOption.text}</span>
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                `;
+                
+                // Create the dropdown options container
+                const dropdownOptions = document.createElement('div');
+                dropdownOptions.className = 'custom-select-options';
+                dropdownOptions.style.display = 'none';
+                
+                // Add each option to the dropdown
+                Array.from(topicSelect.options).forEach(option => {
+                    const optionItem = document.createElement('div');
+                    optionItem.className = 'custom-option';
+                    optionItem.setAttribute('data-value', option.value);
+                    
+                    const icon = option.getAttribute('data-icon');
+                    optionItem.innerHTML = `<i class="${icon}"></i> ${option.text}`;
+                    
+                    optionItem.addEventListener('click', function() {
+                        // Update the hidden select value
+                        topicSelect.value = this.getAttribute('data-value');
+                        
+                        // Update the display
+                        selectDisplay.innerHTML = `
+                            <i class="${icon}"></i>
+                            <span>${option.text}</span>
+                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                        `;
+                        
+                        // Hide the dropdown
+                        dropdownOptions.style.display = 'none';
+                    });
+                    
+                    dropdownOptions.appendChild(optionItem);
+                });
+                
+                // Toggle dropdown on click
+                selectDisplay.addEventListener('click', function() {
+                    const isOpen = dropdownOptions.style.display !== 'none';
+                    dropdownOptions.style.display = isOpen ? 'none' : 'block';
+                    
+                    // Rotate arrow when open
+                    const arrow = this.querySelector('.dropdown-arrow');
+                    arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(event) {
+                    if (!selectWrapper.contains(event.target)) {
+                        dropdownOptions.style.display = 'none';
+                        const arrow = selectDisplay.querySelector('.dropdown-arrow');
+                        if (arrow) arrow.style.transform = 'rotate(0deg)';
+                    }
+                });
+                
+                // Append the custom elements to the wrapper
+                selectWrapper.appendChild(selectDisplay);
+                selectWrapper.appendChild(dropdownOptions);
+                
+                // Replace the original select with our custom version
+                // First hide the original
+                topicSelect.style.display = 'none';
+                
+                // Insert our custom select after the original
+                topicSelect.parentNode.insertBefore(selectWrapper, topicSelect.nextSibling);
+            }
+        });
+    </script>
+</body>
+</html>

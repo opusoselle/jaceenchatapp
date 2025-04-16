@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Event</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <div class="container form-container">
+        <div class="page-header">
+            <h1>Create New Event</h1>
+            <div class="nav-links">
+                <a href="/events" class="btn-action"><i class="fas fa-arrow-left"></i> Back to Events</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <p class="feedback">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="event-form">
+            <div class="form-group">
+                <label for="title">Event Title</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Event Description</label>
+                <textarea id="description" name="description" rows="5" required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="location">Location</label>
+                <input type="text" id="location" name="location" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="event_date">Date</label>
+                    <input type="date" id="event_date" name="event_date" required>
+                </div>
+                
+                <div class="form-group half">
+                    <label for="event_time">Time</label>
+                    <input type="time" id="event_time" name="event_time" required>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button type="submit" class="btn-primary"><i class="fas fa-calendar-plus"></i> Create Event</button>
+                <a href="/events" class="btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

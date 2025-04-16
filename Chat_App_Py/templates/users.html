@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <div class="container users-container">
+        <div class="page-header">
+            <h1>Users</h1>
+            <div class="nav-links">
+                <a href="/" class="btn-action"><i class="fas fa-home"></i> Home</a>
+                <a href="/messages" class="btn-action"><i class="fas fa-envelope"></i> Messages</a>
+                <a href="/profile" class="btn-action"><i class="fas fa-user"></i> Profile</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <p class="feedback">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="status-selector">
+            <h3>Your status: <span class="status-indicator status-{{ current_user.status }}">{{ current_user.status }}</span></h3>
+            <div class="status-options">
+                <a href="/update_status/online" class="status-option status-online">Online</a>
+                <a href="/update_status/away" class="status-option status-away">Away</a>
+                <a href="/update_status/busy" class="status-option status-busy">Busy</a>
+                <a href="/update_status/offline" class="status-option status-offline">Offline</a>
+            </div>
+        </div>
+
+        <!-- Search Form -->
+        <div class="search-container">
+            <form action="/users" method="GET" class="search-form">
+                <div class="search-input-group">
+                    <input type="text" name="search" placeholder="Search by username" value="{{ search_query or '' }}">
+                    <button type="submit" class="search-button"><i class="fas fa-search"></i></button>
+                </div>
+            </form>
+        </div>
+
+        <div class="users-tabs">
+            <button class="tab-button active" data-tab="all">All Users</button>
+            <button class="tab-button" data-tab="friends">Friends</button>
+            <button class="tab-button" data-tab="requests">Friend Requests</button>
+        </div>
+
+        <div class="tab-content">
+            <div class="tab-pane active" id="all-tab">
+                <ul class="users-list">
+                    {% for user in users %}
+                    <li class="user-list-item">
+                        <div class="user-info">
+                            <div class="user-avatar">
+                                <img src="/static/uploads/profile_pics/{{ user.profile_pic }}" alt="{{ user.username }}">
+                                <span class="status-dot status-{{ user.status }}"></span>
+                            </div>
+                            <div class="user-details">
+                                <h3>{{ user.username }}</h3>
+                                {% if user.status_message %}
+                                <p class="status-message">{{ user.status_message }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            {% if user.id in friend_ids %}
+                                <a href="/direct_chat/{{ user.id }}" class="btn-action"><i class="fas fa-comment"></i> Message</a>
+                                <a href="/remove_friend/{{ user.id }}" class="btn-action btn-danger"><i class="fas fa-user-minus"></i> Remove</a>
+                            {% elif user.id in sent_request_ids %}
+                                <span class="pending-request">Request Sent</span>
+                            {% elif user.id in received_request_ids %}
+                                <a href="/accept_friend/{{ user.id }}" class="btn-action btn-success"><i class="fas fa-check"></i> Accept</a>
+                                <a href="/reject_friend/{{ user.id }}" class="btn-action btn-danger"><i class="fas fa-times"></i> Reject</a>
+                            {% else %}
+                                <a href="/add_friend/{{ user.id }}" class="btn-action"><i class="fas fa-user-plus"></i> Add Friend</a>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% else %}
+                    <p class="no-results">No users found</p>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="tab-pane" id="friends-tab">
+                <ul class="users-list">
+                    {% set friend_list = current_user.get_friends() %}
+                    {% for friend in friend_list %}
+                    <li class="user-list-item">
+                        <div class="user-info">
+                            <div class="user-avatar">
+                                <img src="/static/uploads/profile_pics/{{ friend.profile_pic }}" alt="{{ friend.username }}">
+                                <span class="status-dot status-{{ friend.status }}"></span>
+                            </div>
+                            <div class="user-details">
+                                <h3>{{ friend.username }}</h3>
+                                {% if friend.status_message %}
+                                <p class="status-message">{{ friend.status_message }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <a href="/direct_chat/{{ friend.id }}" class="btn-action"><i class="fas fa-comment"></i> Message</a>
+                            <a href="/remove_friend/{{ friend.id }}" class="btn-action btn-danger"><i class="fas fa-user-minus"></i> Remove</a>
+                        </div>
+                    </li>
+                    {% else %}
+                    <p class="no-results">You don't have any friends yet</p>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="tab-pane" id="requests-tab">
+                <ul class="users-list">
+                    {% set requests = current_user.get_friend_requests() %}
+                    {% for request in requests %}
+                    <li class="user-list-item">
+                        <div class="user-info">
+                            <div class="user-avatar">
+                                <img src="/static/uploads/profile_pics/{{ request.sender.profile_pic }}" alt="{{ request.sender.username }}">
+                                <span class="status-dot status-{{ request.sender.status }}"></span>
+                            </div>
+                            <div class="user-details">
+                                <h3>{{ request.sender.username }}</h3>
+                                {% if request.sender.status_message %}
+                                <p class="status-message">{{ request.sender.status_message }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <a href="/accept_friend/{{ request.sender.id }}" class="btn-action btn-success"><i class="fas fa-check"></i> Accept</a>
+                            <a href="/reject_friend/{{ request.sender.id }}" class="btn-action btn-danger"><i class="fas fa-times"></i> Reject</a>
+                        </div>
+                    </li>
+                    {% else %}
+                    <p class="no-results">No pending friend requests</p>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab navigation
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Remove active class from all buttons and panes
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanes.forEach(pane => pane.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    button.classList.add('active');
+                    
+                    // Show corresponding tab pane
+                    const tabId = button.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

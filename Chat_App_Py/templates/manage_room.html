@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Room: {{ room.name }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>Manage Room: {{ room.name }}</h1>
+            <div class="nav-links">
+                <a href="/chat/{{ room.name }}" class="btn-action"><i class="fas fa-arrow-left"></i> Back to Chat</a>
+                <a href="/" class="btn-action"><i class="fas fa-home"></i> Home</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <p class="feedback">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="manage-room-tabs">
+            <button class="tab-button active" data-tab="info">Room Information</button>
+            <button class="tab-button" data-tab="members">Manage Members</button>
+        </div>
+
+        <div class="tab-content">
+            <!-- Room Information Tab -->
+            <div class="tab-pane active" id="info-tab">
+                <div class="room-info-form">
+                    <h2>Room Details</h2>
+                    <form method="POST">
+                        <input type="hidden" name="action" value="update_info">
+                        
+                        <div class="form-group">
+                            <label for="topic">Topic</label>
+                            <select name="topic" id="topic">
+                                {% for topic in topics %}
+                                <option value="{{ topic.name }}" {% if room.topic == topic.name %}selected{% endif %}>
+                                    {{ topic.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea name="description" id="description" rows="4">{{ room.description }}</textarea>
+                        </div>
+                        
+                        <div class="form-group read-only">
+                            <label>Created By</label>
+                            <input type="text" value="{{ room.created_by }}" readonly>
+                        </div>
+                        
+                        <div class="form-group read-only">
+                            <label>Created At</label>
+                            <input type="text" value="{{ room.created_at.strftime('%Y-%m-%d %H:%M') }}" readonly>
+                        </div>
+                        
+                        <div class="form-group read-only">
+                            <label>Room Type</label>
+                            <input type="text" value="{{ 'Private' if room.is_private else 'Public' }}" readonly>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Manage Members Tab -->
+            <div class="tab-pane" id="members-tab">
+                <div class="members-section">
+                    <h2>Current Members</h2>
+                    {% if members %}
+                    <table class="members-table">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in members %}
+                            <tr>
+                                <td>
+                                    <div class="member-info">
+                                        <img src="/static/uploads/profile_pics/{{ member.user.profile_pic }}" alt="{{ member.username }}" class="member-avatar">
+                                        <span>{{ member.username }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="role-badge role-{{ member.role }}">{{ member.role }}</span>
+                                </td>
+                                <td>{{ member.joined_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    <form method="POST" class="member-actions">
+                                        <input type="hidden" name="action" value="manage_member">
+                                        <input type="hidden" name="user_id" value="{{ member.user_id }}">
+                                        
+                                        <select name="role" class="role-select">
+                                            <option value="member" {% if member.role == 'member' %}selected{% endif %}>Member</option>
+                                            <option value="moderator" {% if member.role == 'moderator' %}selected{% endif %}>Moderator</option>
+                                            <option value="admin" {% if member.role == 'admin' %}selected{% endif %}>Admin</option>
+                                            <option value="remove">Remove</option>
+                                        </select>
+                                        
+                                        <button type="submit" class="btn-sm btn-primary">Update</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="no-results">No members in this room yet.</p>
+                    {% endif %}
+                </div>
+
+                <div class="add-member-section">
+                    <h2>Add New Member</h2>
+                    <form method="POST" class="search-user-form">
+                        <input type="hidden" name="action" value="manage_member">
+                        
+                        <div class="form-group">
+                            <label for="user_search">Search User</label>
+                            <input type="text" id="user_search" placeholder="Start typing a username...">
+                            <div id="user-search-results" class="user-search-results"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="selected_user">Selected User</label>
+                            <input type="text" id="selected_user_display" placeholder="No user selected" readonly>
+                            <input type="hidden" id="selected_user_id" name="user_id">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="new_role">Role</label>
+                            <select name="role" id="new_role">
+                                <option value="member">Member</option>
+                                <option value="moderator">Moderator</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary" id="add-member-btn" disabled>
+                            <i class="fas fa-user-plus"></i> Add Member
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab navigation
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Remove active class from all buttons and panes
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanes.forEach(pane => pane.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    button.classList.add('active');
+                    
+                    // Show corresponding tab pane
+                    const tabId = button.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+            
+            // User search functionality
+            const userSearchInput = document.getElementById('user_search');
+            const userSearchResults = document.getElementById('user-search-results');
+            const selectedUserDisplay = document.getElementById('selected_user_display');
+            const selectedUserId = document.getElementById('selected_user_id');
+            const addMemberBtn = document.getElementById('add-member-btn');
+            
+            userSearchInput.addEventListener('input', function() {
+                const searchTerm = this.value.trim();
+                
+                if (searchTerm.length < 2) {
+                    userSearchResults.innerHTML = '';
+                    return;
+                }
+                
+                // This would be an AJAX call to search users
+                // For now, we'll simulate with some dummy data
+                fetch(`/api/search_users?q=${searchTerm}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        userSearchResults.innerHTML = '';
+                        
+                        if (data.users && data.users.length > 0) {
+                            data.users.forEach(user => {
+                                const userItem = document.createElement('div');
+                                userItem.className = 'user-result-item';
+                                userItem.innerHTML = `
+                                    <img src="/static/uploads/profile_pics/${user.profile_pic}" alt="${user.username}" class="result-avatar">
+                                    <span>${user.username}</span>
+                                `;
+                                userItem.setAttribute('data-user-id', user.id);
+                                userItem.setAttribute('data-username', user.username);
+                                
+                                userItem.addEventListener('click', function() {
+                                    const userId = this.getAttribute('data-user-id');
+                                    const username = this.getAttribute('data-username');
+                                    
+                                    selectedUserDisplay.value = username;
+                                    selectedUserId.value = userId;
+                                    addMemberBtn.disabled = false;
+                                    
+                                    userSearchResults.innerHTML = '';
+                                    userSearchInput.value = '';
+                                });
+                                
+                                userSearchResults.appendChild(userItem);
+                            });
+                        } else {
+                            userSearchResults.innerHTML = '<div class="no-results">No users found</div>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error searching users:', error);
+                        userSearchResults.innerHTML = '<div class="error">Error searching users</div>';
+                    });
+            });
+        });
+    </script>
+</body>
+</html>

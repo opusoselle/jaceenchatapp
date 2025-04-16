@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Newsfeed</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <div class="container newsfeed-container">
+        <div class="page-header">
+            <h1>Community Newsfeed</h1>
+            <div class="nav-links">
+                <a href="/" class="btn-action"><i class="fas fa-home"></i> Home</a>
+                <a href="/users" class="btn-action"><i class="fas fa-users"></i> Users</a>
+                <a href="/messages" class="btn-action"><i class="fas fa-envelope"></i> Messages</a>
+                <a href="/events" class="btn-action"><i class="fas fa-calendar-alt"></i> Events</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <p class="feedback">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="newsfeed-filter">
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all">All</button>
+                <button class="filter-tab" data-filter="events">Events</button>
+                <button class="filter-tab" data-filter="announcements">Announcements</button>
+                <button class="filter-tab" data-filter="popular">Popular</button>
+            </div>
+        </div>
+
+        <div class="create-update">
+            <form action="/newsfeed/post" method="POST" class="update-form">
+                <div class="form-group">
+                    <textarea name="content" placeholder="Share an update with the community..." rows="3" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <select name="update_type">
+                        <option value="update">Regular Update</option>
+                        <option value="announcement">Announcement</option>
+                    </select>
+                    <button type="submit" class="btn-primary"><i class="fas fa-paper-plane"></i> Post</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="feed-items">
+            {% if upcoming_events %}
+            <div class="feed-card event-highlight">
+                <div class="feed-header">
+                    <i class="fas fa-calendar-alt feed-icon"></i>
+                    <h3>Upcoming Events</h3>
+                </div>
+                <div class="feed-events">
+                    {% for event in upcoming_events[:3] %}
+                    <div class="mini-event">
+                        <div class="mini-event-date">
+                            <span class="event-month">{{ event.event_date.strftime('%b') }}</span>
+                            <span class="event-day">{{ event.event_date.strftime('%d') }}</span>
+                        </div>
+                        <div class="mini-event-details">
+                            <h4>{{ event.title }}</h4>
+                            <p><i class="fas fa-clock"></i> {{ event.event_date.strftime('%I:%M %p') }}</p>
+                            <p><i class="fas fa-users"></i> {{ event.get_attendee_count() }} attending</p>
+                        </div>
+                        <a href="/event/{{ event.id }}" class="btn-sm"><i class="fas fa-arrow-right"></i></a>
+                    </div>
+                    {% endfor %}
+                    <a href="/events" class="see-all">See all events <i class="fas fa-chevron-right"></i></a>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if active_rooms %}
+            <div class="feed-card">
+                <div class="feed-header">
+                    <i class="fas fa-comments feed-icon"></i>
+                    <h3>Active Discussions</h3>
+                </div>
+                <div class="active-rooms">
+                    {% for room in active_rooms %}
+                    <div class="active-room-item">
+                        <div class="room-activity-info">
+                            <h4>{{ room.name }}</h4>
+                            <span class="topic-tag">{{ room.topic }}</span>
+                            <p>{{ room.recent_messages }} new messages</p>
+                        </div>
+                        <a href="/chat/{{ room.name }}" class="btn-join-now">Join</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if updates %}
+                {% for update in updates %}
+                <div class="feed-card update-item" data-type="{{ update.type }}">
+                    <div class="update-author">
+                        <img src="/static/uploads/profile_pics/{{ update.user.profile_pic }}" alt="{{ update.user.username }}" class="author-pic">
+                        <div class="author-info">
+                            <h4>{{ update.user.username }}</h4>
+                            <span class="timestamp">{{ update.created_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                        </div>
+                        {% if update.type == 'announcement' %}
+                        <span class="announcement-badge">Announcement</span>
+                        {% endif %}
+                    </div>
+                    <div class="update-content">
+                        {{ update.content }}
+                    </div>
+                    <div class="update-actions">
+                        <button class="reaction-btn" data-update-id="{{ update.id }}" data-reaction="like">
+                            <i class="far fa-thumbs-up"></i> 
+                            <span class="reaction-count">{{ update.like_count }}</span>
+                        </button>
+                        <button class="reaction-btn" data-update-id="{{ update.id }}" data-reaction="comment">
+                            <i class="far fa-comment"></i> 
+                            <span class="reaction-count">{{ update.comments|length }}</span>
+                        </button>
+                        {% if update.user_id == current_user.id %}
+                        <div class="update-owner-actions">
+                            <button class="edit-update-btn" data-update-id="{{ update.id }}">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="delete-update-btn" data-update-id="{{ update.id }}">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Comments section, hidden by default -->
+                    <div class="comments-section" id="comments-{{ update.id }}" style="display: none;">
+                        {% if update.comments %}
+                            {% for comment in update.comments %}
+                            <div class="comment">
+                                <img src="/static/uploads/profile_pics/{{ comment.user.profile_pic }}" alt="{{ comment.user.username }}" class="comment-author-pic">
+                                <div class="comment-content">
+                                    <div class="comment-author">{{ comment.user.username }}</div>
+                                    <div class="comment-text">{{ comment.text }}</div>
+                                    <div class="comment-time">{{ comment.created_at.strftime('%b %d, %Y at %I:%M %p') }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <form class="comment-form" data-update-id="{{ update.id }}">
+                            <input type="text" name="comment" placeholder="Write a comment..." required>
+                            <button type="submit"><i class="fas fa-paper-plane"></i></button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="no-results">No updates available yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Edit Update Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Edit Your Update</h3>
+            <form id="edit-update-form">
+                <input type="hidden" id="update-id" name="update_id">
+                <div class="form-group">
+                    <textarea id="update-content" name="content" rows="5" required></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Delete Update</h3>
+            <p>Are you sure you want to delete this update? This action cannot be undone.</p>
+            <form id="delete-update-form">
+                <input type="hidden" id="delete-update-id" name="update_id">
+                <div class="button-group">
+                    <button type="button" class="btn-secondary" id="cancel-delete">Cancel</button>
+                    <button type="submit" class="btn-danger">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Filter tabs
+            const filterTabs = document.querySelectorAll('.filter-tab');
+            const feedItems = document.querySelectorAll('.update-item');
+            
+            filterTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Update active tab
+                    filterTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Filter feed items
+                    const filter = tab.getAttribute('data-filter');
+                    
+                    feedItems.forEach(item => {
+                        if (filter === 'all') {
+                            item.style.display = 'block';
+                        } else if (filter === 'announcements' && item.getAttribute('data-type') === 'announcement') {
+                            item.style.display = 'block';
+                        } else if (filter === 'events' && item.classList.contains('event-update')) {
+                            item.style.display = 'block';
+                        } else if (filter === 'popular' && parseInt(item.querySelector('.reaction-count').textContent) >= 5) {
+                            item.style.display = 'block';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                });
+            });
+            
+            // Toggle comments
+            const commentButtons = document.querySelectorAll('.reaction-btn[data-reaction="comment"]');
+            
+            commentButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const updateId = button.getAttribute('data-update-id');
+                    const commentsSection = document.getElementById(`comments-${updateId}`);
+                    
+                    if (commentsSection.style.display === 'none') {
+                        commentsSection.style.display = 'block';
+                    } else {
+                        commentsSection.style.display = 'none';
+                    }
+                });
+            });
+            
+            // Like functionality
+            const likeButtons = document.querySelectorAll('.reaction-btn[data-reaction="like"]');
+            
+            likeButtons.forEach(button => {
+                button.addEventListener('click', async () => {
+                    const updateId = button.getAttribute('data-update-id');
+                    const countSpan = button.querySelector('.reaction-count');
+                    
+                    try {
+                        const response = await fetch(`/newsfeed/like/${updateId}`, {
+                            method: 'POST'
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            countSpan.textContent = data.likes;
+                            
+                            // Toggle like button appearance
+                            const icon = button.querySelector('i');
+                            if (data.liked) {
+                                icon.classList.remove('far');
+                                icon.classList.add('fas');
+                                button.classList.add('liked');
+                            } else {
+                                icon.classList.remove('fas');
+                                icon.classList.add('far');
+                                button.classList.remove('liked');
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Error liking update:", error);
+                    }
+                });
+            });
+            
+            // Comment submission
+            const commentForms = document.querySelectorAll('.comment-form');
+            
+            commentForms.forEach(form => {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const updateId = form.getAttribute('data-update-id');
+                    const commentInput = form.querySelector('input[name="comment"]');
+                    const comment = commentInput.value.trim();
+                    
+                    if (!comment) return;
+                    
+                    try {
+                        const response = await fetch(`/newsfeed/comment/${updateId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ comment })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            
+                            // Create and append new comment
+                            const commentsSection = document.getElementById(`comments-${updateId}`);
+                            const newComment = document.createElement('div');
+                            newComment.className = 'comment';
+                            newComment.innerHTML = `
+                                <img src="/static/uploads/profile_pics/${data.profile_pic}" alt="${data.username}" class="comment-author-pic">
+                                <div class="comment-content">
+                                    <div class="comment-author">${data.username}</div>
+                                    <div class="comment-text">${data.comment}</div>
+                                    <div class="comment-time">Just now</div>
+                                </div>
+                            `;
+                            
+                            // Insert before the form
+                            commentsSection.insertBefore(newComment, form);
+                            
+                            // Update comment count
+                            const countSpan = document.querySelector(`.reaction-btn[data-update-id="${updateId}"][data-reaction="comment"] .reaction-count`);
+                            countSpan.textContent = parseInt(countSpan.textContent) + 1;
+                            
+                            // Clear input
+                            commentInput.value = '';
+                        }
+                    } catch (error) {
+                        console.error("Error posting comment:", error);
+                    }
+                });
+            });
+            
+            // Edit update
+            const editButtons = document.querySelectorAll('.edit-update-btn');
+            const editModal = document.getElementById('edit-modal');
+            const editForm = document.getElementById('edit-update-form');
+            const closeEditModal = editModal.querySelector('.close-modal');
+            
+            editButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const updateId = button.getAttribute('data-update-id');
+                    const updateCard = button.closest('.update-item');
+                    const contentDiv = updateCard.querySelector('.update-content');
+                    
+                    // Fill form with current content
+                    document.getElementById('update-id').value = updateId;
+                    document.getElementById('update-content').value = contentDiv.textContent.trim();
+                    
+                    // Show modal
+                    editModal.style.display = 'block';
+                });
+            });
+            
+            closeEditModal.addEventListener('click', () => {
+                editModal.style.display = 'none';
+            });
+            
+            editForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const updateId = document.getElementById('update-id').value;
+                const content = document.getElementById('update-content').value.trim();
+                
+                try {
+                    const response = await fetch(`/newsfeed/update/${updateId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ content })
+                    });
+                    
+                    if (response.ok) {
+                        // Update content in the DOM
+                        const updateCard = document.querySelector(`.update-item .update-actions .edit-update-btn[data-update-id="${updateId}"]`).closest('.update-item');
+                        updateCard.querySelector('.update-content').textContent = content;
+                        
+                        // Close modal
+                        editModal.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error("Error updating post:", error);
+                }
+            });
+            
+            // Delete update
+            const deleteButtons = document.querySelectorAll('.delete-update-btn');
+            const deleteModal = document.getElementById('delete-modal');
+            const deleteForm = document.getElementById('delete-update-form');
+            const closeDeleteModal = deleteModal.querySelector('.close-modal');
+            const cancelDelete = document.getElementById('cancel-delete');
+            
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const updateId = button.getAttribute('data-update-id');
+                    document.getElementById('delete-update-id').value = updateId;
+                    deleteModal.style.display = 'block';
+                });
+            });
+            
+            closeDeleteModal.addEventListener('click', () => {
+                deleteModal.style.display = 'none';
+            });
+            
+            cancelDelete.addEventListener('click', () => {
+                deleteModal.style.display = 'none';
+            });
+            
+            deleteForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const updateId = document.getElementById('delete-update-id').value;
+                
+                try {
+                    const response = await fetch(`/newsfeed/delete/${updateId}`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        // Remove the update from DOM
+                        const updateCard = document.querySelector(`.update-item .update-actions .delete-update-btn[data-update-id="${updateId}"]`).closest('.update-item');
+                        updateCard.remove();
+                        
+                        // Close modal
+                        deleteModal.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error("Error deleting update:", error);
+                }
+            });
+            
+            // Close modals when clicking outside
+            window.addEventListener('click', (e) => {
+                if (e.target === editModal) {
+                    editModal.style.display = 'none';
+                }
+                if (e.target === deleteModal) {
+                    deleteModal.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

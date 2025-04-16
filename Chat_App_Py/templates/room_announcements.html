@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Announcements - {{ room.name }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        .announcements-container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            max-width: 900px;
+            margin: 20px auto;
+        }
+
+        .announcements-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .announcements-header h1 {
+            margin: 0;
+            flex-grow: 1;
+            color: #333;
+            display: flex;
+            align-items: center;
+        }
+
+        .announcements-header h1 i {
+            color: #6558f5;
+            margin-right: 10px;
+        }
+
+        .room-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .room-icon {
+            width: 50px;
+            height: 50px;
+            background-color: #6558f5;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-right: 15px;
+        }
+
+        .room-details h2 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+
+        .room-topic {
+            display: inline-block;
+            background-color: #f0f0f0;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            color: #6558f5;
+        }
+
+        .announcement-list {
+            margin-top: 20px;
+        }
+
+        .announcement-card {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f8f2ff;
+            border-left: 4px solid #6558f5;
+            transition: transform 0.2s;
+        }
+
+        .announcement-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .announcement-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .author-pic {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+        }
+
+        .author-info {
+            flex-grow: 1;
+        }
+
+        .author-name {
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+
+        .announcement-timestamp {
+            font-size: 12px;
+            color: #777;
+            margin: 0;
+        }
+
+        .announcement-content {
+            font-size: 16px;
+            line-height: 1.5;
+            color: #444;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+        }
+
+        .no-announcements {
+            padding: 20px;
+            text-align: center;
+            color: #777;
+            font-style: italic;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .btn-back {
+            background-color: #f0f0f0;
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+
+        .btn-back i {
+            margin-right: 5px;
+        }
+
+        .btn-back:hover {
+            background-color: #e0e0e0;
+        }
+
+        .btn-new-announcement {
+            background-color: #6558f5;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+
+        .btn-new-announcement i {
+            margin-right: 5px;
+        }
+
+        .btn-new-announcement:hover {
+            background-color: #5048d5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>Room Announcements</h1>
+            <div class="nav-links">
+                <a href="/" class="btn-action"><i class="fas fa-home"></i> Home</a>
+                <a href="/chat/{{ room.name }}" class="btn-action"><i class="fas fa-comments"></i> Back to Chat</a>
+            </div>
+        </div>
+
+        <div class="announcements-container">
+            <div class="announcements-header">
+                <h1><i class="fas fa-bullhorn"></i> Announcements</h1>
+            </div>
+
+            <div class="room-info">
+                <div class="room-icon">
+                    <i class="fas fa-door-open"></i>
+                </div>
+                <div class="room-details">
+                    <h2>{{ room.name }}</h2>
+                    <span class="room-topic">{{ room.topic }}</span>
+                </div>
+            </div>
+
+            <div class="announcement-list">
+                {% if announcements %}
+                    {% for announcement in announcements %}
+                    <div class="announcement-card" id="announcement-{{ announcement.id }}">
+                        <div class="announcement-header">
+                            <img src="/static/uploads/profile_pics/{{ announcement.user.profile_pic }}" alt="{{ announcement.user.username }}" class="author-pic">
+                            <div class="author-info">
+                                <p class="author-name">{{ announcement.user.username }}</p>
+                                <p class="announcement-timestamp">{{ announcement.created_at.strftime('%b %d, %Y at %I:%M %p') }}</p>
+                            </div>
+                        </div>
+                        <div class="announcement-content">{{ announcement.content }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-announcements">
+                        <p>There are no announcements for this room yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="actions">
+                <a href="/chat/{{ room.name }}" class="btn-back"><i class="fas fa-arrow-left"></i> Back to Chat</a>
+                
+                {% if room.is_admin(session.get('user_id')) or room.is_moderator(session.get('user_id')) %}
+                <a href="/newsfeed/create_announcement?room_id={{ room.id }}" class="btn-new-announcement">
+                    <i class="fas fa-plus"></i> New Announcement
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Highlight the announcement if it was linked directly via URL hash
+        document.addEventListener('DOMContentLoaded', function() {
+            const hash = window.location.hash;
+            if (hash) {
+                const targetAnnouncement = document.querySelector(hash);
+                if (targetAnnouncement) {
+                    targetAnnouncement.scrollIntoView();
+                    targetAnnouncement.style.backgroundColor = '#eee0ff';
+                    
+                    // Reset background color after a few seconds
+                    setTimeout(() => {
+                        targetAnnouncement.style.backgroundColor = '';
+                        targetAnnouncement.style.transition = 'background-color 0.5s';
+                    }, 3000);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

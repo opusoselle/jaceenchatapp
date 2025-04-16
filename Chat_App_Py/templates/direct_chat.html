@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with {{ friend.username }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container chat-container">
+        <div class="chat-header">
+            <div class="friend-info">
+                <a href="/messages" class="back-button"><i class="fas fa-arrow-left"></i></a>
+                <div class="user-avatar">
+                    <img src="/static/uploads/profile_pics/{{ friend.profile_pic }}" alt="{{ friend.username }}">
+                    <span class="status-dot status-{{ friend.status }}"></span>
+                </div>
+                <div class="user-details">
+                    <h2>{{ friend.username }}</h2>
+                    <p class="user-status">{{ friend.status }}</p>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="chat">
+            <ul id="messages">
+                {% for msg in messages %}
+                <li class="message-item {% if msg.sender_id == current_user.id %}own-message{% endif %}">
+                    <div class="message-bubble">
+                        <div class="message-avatar">
+                            <img src="/static/uploads/profile_pics/{{ msg.sender.profile_pic }}" alt="{{ msg.sender.username }}" class="avatar-img">
+                        </div>
+                        <div class="message-content">
+                            <div class="message-header">
+                                <span class="message-text">{{ msg.message }}</span>
+                                <span class="timestamp">{{ msg.timestamp.strftime('%I:%M %p') }}</span>
+                            </div>
+                            
+                            {% if msg.file %}
+                            <div class="message-attachment">
+                                {% if msg.file.file_type == 'image' %}
+                                <div class="image-attachment">
+                                    <a href="/files/{{ msg.file.filename }}" target="_blank">
+                                        <img src="/files/{{ msg.file.filename }}" alt="{{ msg.file.original_filename }}" class="attachment-preview">
+                                    </a>
+                                </div>
+                                {% else %}
+                                <div class="file-attachment">
+                                    <a href="/files/{{ msg.file.filename }}" target="_blank" class="file-link">
+                                        <i class="fas {% if msg.file.file_type == 'document' %}fa-file-alt{% elif msg.file.file_type == 'video' %}fa-file-video{% elif msg.file.file_type == 'audio' %}fa-file-audio{% else %}fa-file{% endif %}"></i>
+                                        {{ msg.file.original_filename }}
+                                        <span class="file-size">{{ (msg.file.file_size / 1024)|round(1) }} KB</span>
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+
+        <div class="chat-input-container">
+            <div id="file-preview" class="file-preview" style="display: none;">
+                <div class="preview-content">
+                    <span id="file-name" class="file-name"></span>
+                    <button id="remove-file" class="remove-file"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <div class="chat-input">
+                <button id="attachBtn" class="btn-attach"><i class="fas fa-paperclip"></i></button>
+                <input id="message" type="text" placeholder="Type a message..." autocomplete="off">
+                <button id="sendBtn" class="btn-send"><i class="fas fa-paper-plane"></i></button>
+            </div>
+            
+            <input type="file" id="file-input" style="display: none;">
+        </div>
+
+
+        <!-- Hidden data for JavaScript -->
+        <input type="hidden" id="current_user_id" value="{{ current_user.id }}">
+        <input type="hidden" id="friend_id" value="{{ friend.id }}">
+        <input type="hidden" id="current_user_profile_pic" value="{{ current_user.profile_pic }}">
+    </div>
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const socket = io();
+            const messageInput = document.getElementById("message");
+            const sendBtn = document.getElementById("sendBtn");
+            const messagesList = document.getElementById("messages");
+            const currentUserId = document.getElementById("current_user_id").value;
+            const friendId = document.getElementById("friend_id").value;
+            const currentUserProfilePic = document.getElementById("current_user_profile_pic").value;
+
+            // File sharing elements
+            const attachBtn = document.getElementById("attachBtn");
+            const fileInput = document.getElementById("file-input");
+            const filePreview = document.getElementById("file-preview");
+            const fileName = document.getElementById("file-name");
+            const removeFileBtn = document.getElementById("remove-file");
+            
+            let selectedFile = null;
+            let fileId = null;
+
+
+            // Join direct chat room (using min and max to ensure consistency)
+            const roomId = `direct_${Math.min(currentUserId, friendId)}_${Math.max(currentUserId, friendId)}`;
+            socket.emit('join_direct', {
+                user_id: currentUserId,
+                friend_id: friendId
+            });
+
+
+            // File attachment handling
+            attachBtn.addEventListener("click", () => {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener("change", (event) => {
+                if (event.target.files.length > 0) {
+                    selectedFile = event.target.files[0];
+                    fileName.textContent = selectedFile.name;
+                    filePreview.style.display = "block";
+                }
+            });
+            
+            removeFileBtn.addEventListener("click", () => {
+                selectedFile = null;
+                fileId = null;
+                fileInput.value = "";
+                filePreview.style.display = "none";
+            });
+
+
+            // Send message function
+            async function sendMessage() {
+                const messageText = messageInput.value.trim();
+                
+                // If there's a file, upload it first
+                if (selectedFile) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', selectedFile);
+                        formData.append('receiver_id', friendId);
+                        
+                        const response = await fetch('/upload_file', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('File upload failed');
+                        }
+                        
+                        const data = await response.json();
+                        fileId = data.file_id;
+                        
+                        // Clear file preview
+                        selectedFile = null;
+                        fileInput.value = "";
+                        filePreview.style.display = "none";
+                    } catch (error) {
+                        console.error('Error uploading file:', error);
+                        alert('Failed to upload file. Please try again.');
+                        return;
+                    }
+                }
+                
+                // Send message if there's text or a file
+                if (messageText || fileId) {
+                    socket.emit('direct_message', {
+                        sender_id: currentUserId,
+                        receiver_id: friendId,
+                        message: messageText,
+                        file_id: fileId
+                    });
+                    
+                    messageInput.value = '';
+                    fileId = null;
+                }
+            }
+
+
+            // Send message on button click
+            sendBtn.addEventListener("click", sendMessage);
+
+
+            // Send message on Enter key
+            messageInput.addEventListener("keypress", (event) => {
+                if (event.key === "Enter") {
+                    sendMessage();
+                }
+            });
+
+
+            // Receive messages
+            socket.on('direct_message', (data) => {
+                const isCurrentUser = data.sender_id == currentUserId;
+                const li = document.createElement("li");
+                li.className = `message-item ${isCurrentUser ? 'own-message' : ''}`;
+                
+                let messageContent = `
+                    <div class="message-bubble">
+                        <div class="message-avatar">
+                            <img src="/static/uploads/profile_pics/${data.sender_profile_pic}" alt="${data.sender_username}" class="avatar-img">
+                        </div>
+                        <div class="message-content">
+                            <div class="message-header">
+                                <span class="message-text">${data.message}</span>
+                                <span class="timestamp">${data.timestamp}</span>
+                            </div>
+                `;
+                
+                // Add file attachment if present
+                if (data.file) {
+                    if (data.file.file_type === 'image') {
+                        messageContent += `
+                            <div class="message-attachment">
+                                <div class="image-attachment">
+                                    <a href="/files/${data.file.filename}" target="_blank">
+                                        <img src="/files/${data.file.filename}" alt="${data.file.original_filename}" class="attachment-preview">
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        let fileIcon = 'fa-file';
+                        if (data.file.file_type === 'document') fileIcon = 'fa-file-alt';
+                        if (data.file.file_type === 'video') fileIcon = 'fa-file-video';
+                        if (data.file.file_type === 'audio') fileIcon = 'fa-file-audio';
+                        
+                        const fileSize = (data.file.file_size / 1024).toFixed(1);
+                        
+                        messageContent += `
+                            <div class="message-attachment">
+                                <div class="file-attachment">
+                                    <a href="/files/${data.file.filename}" target="_blank" class="file-link">
+                                        <i class="fas ${fileIcon}"></i>
+                                        ${data.file.original_filename}
+                                        <span class="file-size">${fileSize} KB</span>
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                messageContent += `
+                        </div>
+                    </div>
+                `;
+                
+                li.innerHTML = messageContent;
+                messagesList.appendChild(li);
+               
+                // Scroll to bottom
+                messagesList.scrollTop = messagesList.scrollHeight;
+            });
+
+
+            // Status updates
+            socket.on('status_update', (data) => {
+                if (data.user_id == friendId) {
+                    // Update friend's status
+                    const statusDot = document.querySelector('.friend-info .status-dot');
+                    const userStatus = document.querySelector('.user-status');
+                   
+                    if (statusDot) {
+                        statusDot.className = `status-dot status-${data.status}`;
+                    }
+                   
+                    if (userStatus) {
+                        userStatus.textContent = data.status;
+                    }
+                }
+            });
+
+
+            // Scroll to bottom on load
+            messagesList.scrollTop = messagesList.scrollHeight;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <div class="container messages-container">
+        <div class="page-header">
+            <h1>Messages</h1>
+            <div class="nav-links">
+                <a href="/" class="btn-action"><i class="fas fa-home"></i> Home</a>
+                <a href="/users" class="btn-action"><i class="fas fa-users"></i> Users</a>
+                <a href="/profile" class="btn-action"><i class="fas fa-user"></i> Profile</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <p class="feedback">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="friends-list">
+            <h2>Friends</h2>
+            <ul class="users-list">
+                {% for friend in friends %}
+                <li class="user-list-item">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <img src="/static/uploads/profile_pics/{{ friend.profile_pic }}" alt="{{ friend.username }}">
+                            <span class="status-dot status-{{ friend.status }}"></span>
+                        </div>
+                        <div class="user-details">
+                            <h3>{{ friend.username }}</h3>
+                            <p class="status-message">{{ friend.status_message or 'No status message' }}</p>
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <a href="/direct_chat/{{ friend.id }}" class="btn-action"><i class="fas fa-comment"></i> Message</a>
+                    </div>
+                </li>
+                {% else %}
+                <p class="no-results">You don't have any friends yet. <a href="/users">Add some friends</a> to start messaging.</p>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

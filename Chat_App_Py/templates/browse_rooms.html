@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Rooms</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>Browse Rooms</h1>
+            <div class="nav-links">
+                <a href="/" class="btn-action"><i class="fas fa-home"></i> Home</a>
+                <a href="/manage_topics" class="btn-action"><i class="fas fa-tags"></i> Manage Topics</a>
+            </div>
+        </div>
+
+        <div class="browse-filters">
+            <form class="room-filters">
+                <div class="filter-group">
+                    <label for="topic">Filter by Topic</label>
+                    <select name="topic" id="topic" onchange="this.form.submit()">
+                        <option value="all" {% if current_topic == 'all' %}selected{% endif %}>All Topics</option>
+                        {% for topic in topics %}
+                        <option value="{{ topic.name }}" {% if current_topic == topic.name %}selected{% endif %}>
+                            {{ topic.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-group search-group">
+                    <label for="search">Search</label>
+                    <div class="search-input-wrapper">
+                        <input type="text" name="search" id="search" value="{{ search }}" placeholder="Search rooms...">
+                        <button type="submit" class="search-button"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="rooms-grid">
+            {% if rooms %}
+                {% for room in rooms %}
+                <div class="room-card">
+                    <div class="room-topic">
+                        <span class="topic-badge">
+                            {% set topic_obj = topics|selectattr('name', 'equalto', room.topic)|first %}
+                            {% if topic_obj %}
+                            <i class="{{ topic_obj.icon }}"></i>
+                            {% else %}
+                            <i class="fas fa-hashtag"></i>
+                            {% endif %}
+                            {{ room.topic }}
+                        </span>
+                    </div>
+                    <div class="room-info">
+                        <h3 class="room-name">{{ room.name }}</h3>
+                        <p class="room-description">{{ room.description }}</p>
+                        <div class="room-meta">
+                            <span class="room-creator"><i class="fas fa-user"></i> {{ room.created_by }}</span>
+                            <span class="room-created-at"><i class="fas fa-calendar"></i> {{ room.created_at.strftime('%b %d, %Y') }}</span>
+                        </div>
+                    </div>
+                    <div class="room-actions">
+                        {% if room.is_private %}
+                        <!-- For private rooms, we need to use the form to handle password -->
+                        <form action="/" method="POST">
+                            <input type="hidden" name="room_code" value="{{ room.name }}">
+                            <button type="submit" class="btn-join">
+                                <i class="fas fa-lock"></i> Join Private Room
+                            </button>
+                        </form>
+                        {% else %}
+                        <!-- For public rooms, direct link is simpler -->
+                        <a href="/chat/{{ room.name }}" class="btn-join">
+                            <i class="fas fa-sign-in-alt"></i> Join Room
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="no-results">No rooms found. Try different search criteria or <a href="/">create a new room</a>.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
